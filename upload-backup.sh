@@ -14,6 +14,9 @@ LOCAL="$2"
 REMOTE_NAME="$3"
 REMOTE_DIR="/my-files/Backups"
 BASENAME="$(basename -- "$LOCAL")"
+# Hard ceiling on captured CLI output — a noisy or malfunctioning CLI
+# shouldn't be able to force unbounded shell/QML memory use.
+MAX_STATUS_BYTES=1048576
 
 json_escape() {
   local s="$1"
@@ -26,14 +29,14 @@ json_escape() {
 
 "$CLI" filesystem create-folder /my-files Backups >/dev/null 2>&1
 
-UPLOAD_OUT=$("$CLI" filesystem upload -f replace -d replace "$LOCAL" "$REMOTE_DIR" 2>&1)
+UPLOAD_OUT=$("$CLI" filesystem upload -f replace -d replace "$LOCAL" "$REMOTE_DIR" 2>&1 | head -c "$MAX_STATUS_BYTES")
 UPLOAD_CODE=$?
 if [ "$UPLOAD_CODE" -ne 0 ]; then
   printf '{"ok":false,"message":"%s"}\n' "$(json_escape "$UPLOAD_OUT")"
   exit 0
 fi
 
-RENAME_OUT=$("$CLI" filesystem rename "$REMOTE_DIR/$BASENAME" "$REMOTE_NAME" 2>&1)
+RENAME_OUT=$("$CLI" filesystem rename "$REMOTE_DIR/$BASENAME" "$REMOTE_NAME" 2>&1 | head -c "$MAX_STATUS_BYTES")
 RENAME_CODE=$?
 if [ "$RENAME_CODE" -ne 0 ]; then
   printf '{"ok":false,"message":"uploaded but rename failed: %s"}\n' "$(json_escape "$RENAME_OUT")"

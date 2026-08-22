@@ -7,6 +7,9 @@ set -uo pipefail
 CLI="$1"
 shift
 REMOTE_DIR="/my-files/Backups"
+# Hard ceiling on captured CLI output — a noisy or malfunctioning CLI
+# shouldn't be able to force unbounded shell/QML memory use.
+MAX_STATUS_BYTES=1048576
 
 json_escape() {
   local s="$1"
@@ -20,7 +23,7 @@ json_escape() {
 FAILED=()
 for name in "$@"; do
   ESCAPED="${name//\//\\/}"
-  if ! OUT=$("$CLI" filesystem trash "$REMOTE_DIR/$ESCAPED" 2>&1); then
+  if ! OUT=$("$CLI" filesystem trash "$REMOTE_DIR/$ESCAPED" 2>&1 | head -c "$MAX_STATUS_BYTES"); then
     FAILED+=("$(json_escape "$name"): $(json_escape "$OUT")")
   fi
 done

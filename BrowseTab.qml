@@ -205,6 +205,7 @@ Item {
         visible: root.cliChecked && root.cliPath === ""
         width: parent.width
         text: "Could not set up the Proton Drive CLI: " + root.cliError
+        textFormat: Text.PlainText
         color: Color.urgent
         font.pixelSize: Style.font.bodySmall
         wrapMode: Text.Wrap
@@ -214,6 +215,7 @@ Item {
         visible: root.lastError !== ""
         width: parent.width
         text: root.lastError
+        textFormat: Text.PlainText
         color: Color.urgent
         font.pixelSize: Style.font.bodySmall
         wrapMode: Text.Wrap
@@ -233,6 +235,7 @@ Item {
 
             Text {
               text: modelData
+              textFormat: Text.PlainText
               color: index === root.currentSegments.length - 1 ? root.foreground : Qt.darker(root.foreground, 1.3)
               font.bold: index === root.currentSegments.length - 1
               font.family: root.fontFamily
@@ -293,6 +296,7 @@ Item {
         visible: root.busy
         width: parent.width
         text: root.busyLabel
+        textFormat: Text.PlainText
         color: Qt.darker(root.foreground, 1.5)
         font.pixelSize: Style.font.bodySmall
       }
@@ -334,6 +338,7 @@ Item {
                   id: nameText
                   width: parent.width
                   text: (entryRow.modelData.type === "folder" ? "📁 " : "📄 ") + entryRow.modelData.name
+                  textFormat: Text.PlainText
                   color: root.foreground
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.bodySmall

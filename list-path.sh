@@ -10,6 +10,12 @@ set -uo pipefail
 
 CLI="$1"
 REMOTE_PATH="$2"
+# Hard ceilings so a huge or malfunctioning listing can't force unbounded
+# memory use here or in the QML that reads this script's output: a byte cap
+# on what's ever captured into a shell variable, and a row cap independent
+# of that on what's actually returned.
+MAX_LISTING_BYTES=5242880
+MAX_ENTRIES=500
 
 json_escape() {
   local s="$1"
@@ -20,14 +26,14 @@ json_escape() {
   printf '%s' "$s"
 }
 
-RAW=$("$CLI" filesystem list -j "$REMOTE_PATH" 2>&1)
+RAW=$("$CLI" filesystem list -j "$REMOTE_PATH" 2>&1 | head -c "$MAX_LISTING_BYTES")
 CODE=$?
 if [ "$CODE" -ne 0 ]; then
   printf '{"ok":false,"message":"%s","entries":[]}\n' "$(json_escape "$RAW")"
   exit 0
 fi
 
-ENTRIES=$(printf '%s' "$RAW" | jq -c '
+ENTRIES=$(printf '%s' "$RAW" | jq -c --argjson max "$MAX_ENTRIES" '
   [ .[] | {
       name: .name.value,
       type: .type,
@@ -35,6 +41,7 @@ ENTRIES=$(printf '%s' "$RAW" | jq -c '
       modified: (.modificationTime | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601 * 1000)
     } ]
   | sort_by([(.type != "folder"), .name])
+  | .[0:$max]
 ' 2>/dev/null)
 if [ -z "$ENTRIES" ]; then ENTRIES="[]"; fi
 

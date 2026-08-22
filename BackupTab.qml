@@ -333,6 +333,7 @@ Item {
         visible: root.cliChecked && root.cliPath === ""
         width: parent.width
         text: "Could not set up the Proton Drive CLI: " + root.cliError
+        textFormat: Text.PlainText
         color: Color.urgent
         font.pixelSize: Style.font.bodySmall
         wrapMode: Text.Wrap
@@ -342,6 +343,7 @@ Item {
         visible: root.lastError !== ""
         width: parent.width
         text: root.lastError
+        textFormat: Text.PlainText
         color: Color.urgent
         font.pixelSize: Style.font.bodySmall
         wrapMode: Text.Wrap
@@ -385,6 +387,7 @@ Item {
         visible: root.busy
         width: parent.width
         text: root.busyLabel
+        textFormat: Text.PlainText
         color: Qt.darker(root.foreground, 1.5)
         font.pixelSize: Style.font.bodySmall
       }
@@ -418,6 +421,7 @@ Item {
               Text {
                 width: parent.width
                 text: (backupRow.modelData.type === "folder" ? "📁 " : "") + backupRow.modelData.name
+                textFormat: Text.PlainText
                 color: root.foreground
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.bodySmall
@@ -468,6 +472,7 @@ Item {
       Text {
         width: parent.width
         text: (root.pendingIsFolder ? "📁 " : "") + root.baseNameOf(root.pendingLocalPath)
+        textFormat: Text.PlainText
         color: root.foreground
         font.bold: true
         font.family: root.fontFamily
@@ -478,6 +483,7 @@ Item {
       Text {
         width: parent.width
         text: "Will be uploaded as: " + root.pendingRemoteName
+        textFormat: Text.PlainText
         color: Qt.darker(root.foreground, 1.5)
         font.pixelSize: Style.font.caption
         wrapMode: Text.Wrap
@@ -508,7 +514,7 @@ Item {
         Toggle {
           required property var modelData
           width: confirmColumn.width
-          label: modelData.name
+          label: Format.plainText(modelData.name)
           description: Format.formatDateTime(modelData.modified)
             + (modelData.type === "folder" ? "" : "  ·  " + Format.formatBytes(modelData.size))
           checked: root.selectedForTrash[modelData.name] === true
@@ -524,6 +530,7 @@ Item {
         visible: root.busy
         width: parent.width
         text: root.busyLabel
+        textFormat: Text.PlainText
         color: Qt.darker(root.foreground, 1.5)
         font.pixelSize: Style.font.bodySmall
       }

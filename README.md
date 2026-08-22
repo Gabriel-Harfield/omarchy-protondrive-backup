@@ -231,6 +231,28 @@ button:
 - `upload-to.sh` — uploads a file or folder into an arbitrary Proton
   Drive folder, keeping its original name. Browse tab.
 
+## Hardening
+
+A remote Proton Drive listing is untrusted input the same way a shared
+folder's contents are — names, counts, and CLI output size are whatever
+the drive (or a misbehaving CLI) hands back, not something this plugin
+controls:
+
+- Every shell script that captures CLI output pipes it through a hard
+  `head -c` byte ceiling before it ever reaches a shell variable — a
+  huge or malfunctioning response can't force unbounded memory use in
+  the script or in the QML `StdioCollector` reading its output. The two
+  listing scripts (`list-backups.sh`, `list-path.sh`) additionally cap
+  the number of rows returned (500) independent of that byte ceiling.
+- Every `Text {}` element that displays a remote-controlled name sets
+  `textFormat: Text.PlainText` explicitly, so it can never be
+  auto-detected as rich text — QML's default `Text.AutoText` would
+  otherwise let a file or folder named with an `<img src=…>`-shaped
+  string trigger a network fetch just by being listed. The one sink this
+  plugin doesn't own directly (the "related backups" list uses qs.Ui's
+  shared `Toggle` component, whose internal `Text` can't be configured
+  from here) gets its input HTML-escaped instead (`Format.plainText()`).
+
 ## Notes
 
 - `manageIpc` is off: the panel opens only by clicking the bar icon, not

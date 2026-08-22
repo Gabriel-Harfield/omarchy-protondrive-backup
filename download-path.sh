@@ -12,6 +12,9 @@ LOCAL_DIR="$3"
 # of the real path separator. Cosmetic only: it just affects the localPath
 # echoed back in the result JSON, not the download itself.
 NAME="${REMOTE_PATH##*/}"
+# Hard ceiling on captured CLI output — a noisy or malfunctioning CLI
+# shouldn't be able to force unbounded shell/QML memory use.
+MAX_STATUS_BYTES=1048576
 
 json_escape() {
   local s="$1"
@@ -24,7 +27,7 @@ json_escape() {
 
 mkdir -p "$LOCAL_DIR"
 
-OUT=$("$CLI" filesystem download -f rename -d rename "$REMOTE_PATH" "$LOCAL_DIR" 2>&1)
+OUT=$("$CLI" filesystem download -f rename -d rename "$REMOTE_PATH" "$LOCAL_DIR" 2>&1 | head -c "$MAX_STATUS_BYTES")
 CODE=$?
 
 if [ "$CODE" -eq 0 ]; then

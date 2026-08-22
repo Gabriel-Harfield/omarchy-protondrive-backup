@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.gabrielharfield.protondrive-backup",
   "name": "Proton Drive Backup",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "author": "gabrielharfield",
   "license": "MIT",
   "description": "Proton Drive panel: Backup creates dated, Déjà Dup-style copies of a chosen file or folder on your Drive; Browse lets you navigate, download from, or upload to any folder. Uses a specific, pinned CLI build (not the AUR package) for predictability, downloaded and verified by the plugin itself. Deliberately no background sync — every action is explicit and one-shot, since Proton Drive lacks a safe, documented way to build real-time multi-device sync. See README for the full reasoning.",

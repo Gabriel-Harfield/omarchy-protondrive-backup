@@ -11,6 +11,9 @@ set -uo pipefail
 CLI="$1"
 LOCAL="$2"
 REMOTE_PARENT="$3"
+# Hard ceiling on captured CLI output — a noisy or malfunctioning CLI
+# shouldn't be able to force unbounded shell/QML memory use.
+MAX_STATUS_BYTES=1048576
 
 json_escape() {
   local s="$1"
@@ -21,7 +24,7 @@ json_escape() {
   printf '%s' "$s"
 }
 
-OUT=$("$CLI" filesystem upload -f rename -d rename "$LOCAL" "$REMOTE_PARENT" 2>&1)
+OUT=$("$CLI" filesystem upload -f rename -d rename "$LOCAL" "$REMOTE_PARENT" 2>&1 | head -c "$MAX_STATUS_BYTES")
 CODE=$?
 
 if [ "$CODE" -eq 0 ]; then
