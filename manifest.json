@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.gabrielharfield.protondrive-backup",
   "name": "Proton Drive Backup",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "author": "gabrielharfield",
   "license": "MIT",
   "description": "Proton Drive panel using a specific, pinned build of the official Proton Drive CLI as the transfer backend (downloaded once to this plugin's own folder and version-checked on every launch — never the system/AUR copy, never \"latest\"; see the README for why). The Backup tab is Deja-Dup-style: pick a file or folder, it's uploaded to /my-files/Backups with the current date and time baked into its name (never overwritten), and any previous backups of that same item are offered for deletion first. The Browse tab is a breadcrumb-navigable read/write view of your whole Proton Drive, starting at /my-files, to download any file or folder or upload one into whatever folder you're currently viewing. No sync, no file comparison anywhere — every action is an explicit, one-shot upload or download; see the README for why real-time multi-device sync isn't offered. Left-click the bar icon to open the panel — the panel isn't IPC-toggleable (manageIpc is off, to avoid duplicate-instance IPC target collisions on multi-monitor setups).",

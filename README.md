@@ -3,6 +3,13 @@
 An Omarchy bar panel for Proton Drive, using the official Proton Drive
 CLI as the transfer backend.
 
+Built around one priority, ahead of every other feature: **never lose or
+corrupt a file.** Everything below — the explicit, one-shot actions
+instead of a background sync daemon, the pinned CLI version, even which
+picker button does what — follows from that, including the features this
+plugin deliberately doesn't have yet. See "Why reliability comes before
+real-time sync" below for the reasoning in full.
+
 - **Backup** — Déjà Dup-style manual backup of one file or folder at a
   time. No sync, no file comparison — every backup is a brand-new, dated
   copy uploaded to `/my-files/Backups`.
@@ -22,11 +29,15 @@ testbed for exploring real sync approaches — not something this plugin
 depends on or shares code with. If that ever produces a satisfying
 result, it would be ported in here as a third tab, not merged wholesale.
 
-## Why no real-time multi-device sync
+## Why reliability comes before real-time sync
 
 This plugin does one-shot uploads and downloads, on demand — it doesn't
 try to keep two machines continuously in sync the way Dropbox or
-Syncthing do, and that's a deliberate choice, not a missing feature:
+Syncthing do. That's a deliberate choice, not a missing feature, and it
+comes down to one question: when a tool might be the only thing standing
+between someone and their work, is it more important that it does
+everything, or that everything it does is trustworthy? This project
+picked the second answer, on purpose, even where that costs convenience.
 
 - **Proton Drive's CLI has no push/notification channel at all.** There
   is no way for one machine to be told the instant another machine
@@ -39,32 +50,45 @@ Syncthing do, and that's a deliberate choice, not a missing feature:
   568-file listing pass triggered 141 HTTP 429s in under four minutes.
   Cross-device propagation fast enough to feel instant would need
   polling every few seconds, on every synced machine, which reproduces
-  that same wall from a different angle.
+  that same wall from a different angle — and a sync engine that starts
+  missing or delaying updates under its own load is exactly the kind of
+  quietly-degraded reliability this project won't ship.
 - **A real two-way sync engine is possible on top of `filesystem list`'s
   per-revision metadata** (`claimedDigests.sha1`, `claimedModificationTime`,
-  `claimedSize`) — a third-party plugin has since built exactly that, and
-  its own test suite holds up under review. But those fields aren't part
-  of the CLI's documented contract, and depending on them is a real bet:
-  if a future CLI version changes what they mean, or ships its own
-  content-aware download logic that quietly disagrees with a hand-rolled
-  diff built on top of it, the failure mode is a silently wrong sync
-  state, not a loud crash. For a tool that might hold someone's only copy
-  of a real work document, that's a bet this project isn't willing to
-  make right now — see the CLI-pinning section below for the same
-  reasoning applied to version drift in general.
+  `claimedSize`) — at least one other Proton Drive plugin has built
+  exactly that, competently, with a test suite that holds up under
+  review. That's a legitimate engineering achievement, and it's also a
+  bet this project won't make: those fields aren't part of the CLI's
+  documented contract. If a future CLI version changes what they mean,
+  or ships its own content-aware download logic that quietly disagrees
+  with a hand-rolled diff built on top of it, the failure mode is a
+  *silently wrong* sync state, not a loud crash — the worst possible
+  failure mode for something holding real files, because nothing tells
+  you it happened. Depending on undocumented behavior to sync someone's
+  only copy of a document is a trade this plugin isn't willing to make,
+  no matter how well the code around that trade is written. See the
+  CLI-pinning section below for the same "silent drift is worse than a
+  loud break" reasoning applied to version control in general — it's the
+  same principle both times, not two unrelated decisions.
 
 If Proton ships a real Linux sync client, or the CLI gains an actual
-change-feed / push primitive, this calculus changes. Until then: back up
-explicitly, on your own schedule, and know exactly what got uploaded and
-when — that's what this plugin is for.
+change-feed / push primitive, this calculus changes — the objection is to
+depending on an undocumented workaround, not to sync as a goal. Until
+then: back up explicitly, on your own schedule, and know exactly what got
+uploaded and when. Slower and certain beats fast and occasionally wrong,
+for this kind of tool — that's the whole design philosophy in one line.
 
 ## Backup tab
 
 1. Click the bar icon (cloud glyph, right section) to open the panel.
-2. **+ New backup** opens the native picker (`omarchy-file-select`). Pick
-   a file or a folder — the picker itself doesn't force a choice between
-   the two, so a plain "open file" dialog already lets you select either;
-   the plugin detects which one you picked afterwards (`stat-kind.sh`).
+2. **+ Backup file** or **+ Backup folder** opens the native picker
+   (`omarchy-file-select`, with `--directory` for the folder case). Two
+   buttons, not one: verified live that a plain "open file" dialog lists
+   folders in the GTK/Nautilus chooser used here but won't let one be
+   *chosen*, only navigated into — `--directory` is the only reliable way
+   to put the chooser into folder-selection mode, so which button you
+   press has to decide that up front. `stat-kind.sh` still double-checks
+   the result afterwards, as a cheap defensive backstop.
 3. The panel shows every existing Proton Drive backup of that same item
    — same kind (file/folder) and same name, matched by name, not content
    — and lets you tick old ones to trash before the new upload, or leave

@@ -107,10 +107,25 @@ Item {
   }
 
   // --- picking a file or folder --------------------------------------------
+  //
+  // Two explicit entry points, not one generic picker with kind guessed
+  // afterward: verified live (2026-08-22) that omarchy-file-select without
+  // --directory lists folders in the GTK/Nautilus chooser but won't let one
+  // be *chosen* as the result, only navigated into — a plain "open file"
+  // dialog here reliably returns files only. --directory is the only
+  // reliable way to get the chooser into folder-selection mode, so which
+  // button was pressed has to decide that up front, not stat-kind.sh after
+  // the fact. stat-kind.sh still runs on the result as a cheap defensive
+  // check, not as the primary signal anymore.
 
-  function pickItem() {
+  function pickFile() { root.startPick(false) }
+  function pickFolder() { root.startPick(true) }
+
+  function startPick(isFolder) {
     if (root.cliPath === "" || root.busy) return
-    pickProc.command = ["omarchy-file-select", "--title", "Choose a file or folder to back up to Proton Drive"]
+    pickProc.command = isFolder
+      ? ["omarchy-file-select", "--title", "Choose a folder to back up to Proton Drive", "--directory"]
+      : ["omarchy-file-select", "--title", "Choose a file to back up to Proton Drive"]
     pickProc.running = false
     pickProc.running = true
   }
@@ -128,9 +143,6 @@ Item {
     }
   }
 
-  // The picker itself doesn't reliably distinguish file vs folder unless
-  // asked with --directory, so kind is detected here after the fact
-  // instead of by which button was pressed (see stat-kind.sh).
   Process {
     id: statProc
     stdout: StdioCollector { id: statStdout; waitForEnd: true }
@@ -335,18 +347,28 @@ Item {
         wrapMode: Text.Wrap
       }
 
-      Row {
+      Flow {
         width: parent.width
         spacing: Style.spacing.sm
 
         Button {
-          text: "+ New backup"
+          text: "+ Backup file"
           bordered: true
           enabled: !root.busy && root.cliPath !== ""
           foreground: root.foreground
           accent: Color.accent
           fontFamily: root.fontFamily
-          onClicked: root.pickItem()
+          onClicked: root.pickFile()
+        }
+
+        Button {
+          text: "+ Backup folder"
+          bordered: true
+          enabled: !root.busy && root.cliPath !== ""
+          foreground: root.foreground
+          accent: Color.accent
+          fontFamily: root.fontFamily
+          onClicked: root.pickFolder()
         }
 
         Button {
