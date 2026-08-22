@@ -4,14 +4,15 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// Orchestration only: finds the CLI once, hosts the tab switcher and the
-// gear-icon Settings view, and hands BackupTab.qml / BrowseTab.qml /
-// SettingsView.qml everything they need as plain properties. None of the
-// three reaches into another — see the isolation note in each one's own
-// header comment. cliPath flows down to all three, but only SettingsView
-// can change it (edit / auto-detect / install); Panel.qml picks that up via
-// its own `onCliPathChanged:` handler on the SettingsView instance and
-// mirrors it into `root.cliPath`, which is what BackupTab/BrowseTab bind to.
+// Orchestration only: ensures the plugin's own pinned Proton Drive CLI copy
+// is in place once (ensure-cli.sh — never the system/AUR copy, never
+// "latest"), hosts the tab switcher and the gear-icon Settings view, and
+// hands BackupTab.qml / BrowseTab.qml / SettingsView.qml everything they
+// need as plain properties. None of the three reaches into another — see
+// the isolation note in each one's own header comment. cliPath is owned
+// exclusively here now: SettingsView only displays it (read-only) and can
+// no longer change it, so nothing in the UI can point the plugin at an
+// untested CLI build.
 Panel {
   id: root
   moduleName: "io.github.gabrielharfield.protondrive-backup"
@@ -26,6 +27,8 @@ Panel {
 
   property string cliPath: ""
   property bool cliChecked: false
+  property string cliVersion: ""
+  property string cliError: ""
 
   // "backup" | "browse"
   property string activeTab: "backup"
@@ -46,16 +49,31 @@ Panel {
   }
 
   Component.onCompleted: {
-    findCliProc.running = true
+    ensureCliProc.running = true
   }
 
+  // Runs on every panel instantiation, not just "first ever use" — cheap
+  // when the pinned binary is already in place (a version-string check,
+  // not a re-hash; see ensure-cli.sh), and it's what makes a corrupted or
+  // externally-replaced binary self-heal back to the pinned build instead
+  // of the plugin silently running on top of something untested.
   Process {
-    id: findCliProc
-    command: ["bash", root.pluginDir + "/find-cli.sh"]
-    stdout: StdioCollector { id: findCliStdout; waitForEnd: true }
+    id: ensureCliProc
+    command: ["bash", root.pluginDir + "/ensure-cli.sh"]
+    stdout: StdioCollector { id: ensureCliStdout; waitForEnd: true }
     onExited: function(exitCode) {
-      root.cliPath = (findCliStdout.text || "").trim()
+      var raw = (ensureCliStdout.text || "").trim()
+      var parsed = null
+      try { parsed = JSON.parse(raw) } catch (e) { parsed = null }
       root.cliChecked = true
+      if (parsed && parsed.ok === true) {
+        root.cliPath = parsed.path
+        root.cliVersion = parsed.version
+        root.cliError = ""
+      } else {
+        root.cliPath = ""
+        root.cliError = (parsed && parsed.message) || raw || "Could not set up the Proton Drive CLI."
+      }
     }
   }
 
@@ -163,6 +181,7 @@ Panel {
             visible: root.panelView === "tabs" && root.activeTab === "backup"
             cliPath: root.cliPath
             cliChecked: root.cliChecked
+            cliError: root.cliError
             pluginDir: root.pluginDir
             homeDir: root.homeDir
             cloudGlyph: root.cloudGlyph
@@ -176,6 +195,7 @@ Panel {
             visible: root.panelView === "tabs" && root.activeTab === "browse"
             cliPath: root.cliPath
             cliChecked: root.cliChecked
+            cliError: root.cliError
             pluginDir: root.pluginDir
             homeDir: root.homeDir
             cloudGlyph: root.cloudGlyph
@@ -187,11 +207,10 @@ Panel {
             id: settingsView
             anchors.fill: parent
             visible: root.panelView === "settings"
-            pluginDir: root.pluginDir
-            initialCliPath: root.cliPath
+            cliPath: root.cliPath
+            cliVersion: root.cliVersion
             foreground: root.barForeground
             fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
-            onCliPathChanged: root.cliPath = settingsView.cliPath
           }
         }
       }

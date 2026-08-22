@@ -3,83 +3,24 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// CLI setup: install the proton-drive binary and/or log in. Reused, adapted
-// logic from io.github.gabrielharfield.protondrive-sync's own Settings view,
-// which the user confirmed works well there. Self-contained like BackupTab
-// and BrowseTab — its only coupling to Panel.qml is the cliPath hand-off
-// below (see the comment on the `cliPath` property).
+// Deliberately minimal: CLI provisioning and version-pinning are fully
+// automatic now (see ensure-cli.sh, run from Panel.qml) — there is no path
+// field and no install/detect button here on purpose, so nothing in this
+// UI can point the plugin at an untested CLI build. Login is the one thing
+// that still needs a human: it opens a real browser window, so it can't
+// happen silently on its own. This view is kept as its own isolated
+// component (not just deleted) so a later update has somewhere to grow —
+// see the user's 2026-08-22 note that Settings stays for future additions.
 Item {
   id: root
 
-  required property string pluginDir
+  required property string cliPath
+  required property string cliVersion
   required property color foreground
   required property string fontFamily
 
-  // Seeded once from Panel.qml's own cliPath at instantiation, then owned
-  // locally from here on. Panel.qml listens to this property's own
-  // auto-generated cliPathChanged signal (`onCliPathChanged:` on the
-  // SettingsView instance) to mirror edits/detects/installs back into its
-  // own cliPath, which is what actually flows down into BackupTab/BrowseTab.
-  // No custom signal needed for that — QML already provides one per property.
-  required property string initialCliPath
-  property string cliPath: initialCliPath
-
-  property bool installingCli: false
-  property string installError: ""
-  property string installMessage: ""
-
   property bool loggingIn: false
   property string loginError: ""
-
-  function detectCli() {
-    detectProc.command = ["bash", root.pluginDir + "/find-cli.sh"]
-    detectProc.running = false
-    detectProc.running = true
-  }
-
-  Process {
-    id: detectProc
-    stdout: StdioCollector { id: detectStdout; waitForEnd: true }
-    onExited: function(exitCode) {
-      if (exitCode === 0) {
-        var p = (detectStdout.text || "").trim()
-        if (p !== "") root.cliPath = p
-      }
-    }
-  }
-
-  function installCli() {
-    if (root.installingCli) return
-    root.installingCli = true
-    root.installError = ""
-    root.installMessage = ""
-    installProc.command = ["bash", root.pluginDir + "/install-cli.sh"]
-    installProc.running = false
-    installProc.running = true
-  }
-
-  Process {
-    id: installProc
-    stdout: StdioCollector { id: installStdout; waitForEnd: true }
-    stderr: StdioCollector { id: installStderr; waitForEnd: true }
-    onExited: function(exitCode) {
-      root.installingCli = false
-      var raw = (installStdout.text || "").trim()
-      var parsed = null
-      try { parsed = JSON.parse(raw) } catch (e) { parsed = null }
-      if (parsed && parsed.ok) {
-        root.installError = ""
-        root.installMessage = "Installed proton-drive " + parsed.version + " to " + parsed.path
-        root.cliPath = parsed.path
-      } else {
-        root.installMessage = ""
-        root.installError = (parsed && parsed.message)
-          || (installStderr.text || "").trim()
-          || raw
-          || ("install script exited with code " + exitCode)
-      }
-    }
-  }
 
   function loginNow() {
     if (root.cliPath === "" || root.loggingIn) return
@@ -120,64 +61,25 @@ Item {
 
       PanelSectionHeader { text: "PROTON DRIVE CLI"; foreground: root.foreground }
 
-      Button {
-        text: root.installingCli ? "Installing…" : "Install Proton-CLI"
-        bordered: true
-        enabled: !root.installingCli
-        width: parent.width
-        foreground: root.foreground
-        accent: Color.accent
-        fontFamily: root.fontFamily
-        onClicked: root.installCli()
-      }
-
       Text {
-        visible: root.installMessage !== ""
         width: parent.width
-        text: root.installMessage
+        text: root.cliPath !== ""
+          ? "Version " + root.cliVersion + " — pinned and managed automatically by this plugin."
+          : "Setting up…"
         color: Qt.darker(root.foreground, 1.3)
         font.pixelSize: Style.font.bodySmall
         wrapMode: Text.Wrap
       }
 
-      Text {
-        visible: root.installError !== ""
+      Button {
+        text: root.loggingIn ? "Opening browser…" : "Log in"
+        bordered: true
+        enabled: root.cliPath !== "" && !root.loggingIn
         width: parent.width
-        text: "Install failed: " + root.installError
-        color: Color.urgent
-        font.pixelSize: Style.font.bodySmall
-        wrapMode: Text.Wrap
-      }
-
-      TextField {
-        id: cliField
-        width: parent.width
-        text: root.cliPath
         foreground: root.foreground
-        placeholderText: "/path/to/proton-drive"
-        onTextChanged: root.cliPath = text
-      }
-
-      Row {
-        width: parent.width
-        spacing: Style.spacing.sm
-
-        Button {
-          text: "Auto-detect"
-          bordered: true
-          foreground: root.foreground
-          fontFamily: root.fontFamily
-          onClicked: root.detectCli()
-        }
-
-        Button {
-          text: root.loggingIn ? "Opening browser…" : "Log in"
-          bordered: true
-          enabled: root.cliPath !== "" && !root.loggingIn
-          foreground: root.foreground
-          fontFamily: root.fontFamily
-          onClicked: root.loginNow()
-        }
+        accent: Color.accent
+        fontFamily: root.fontFamily
+        onClicked: root.loginNow()
       }
 
       Text {

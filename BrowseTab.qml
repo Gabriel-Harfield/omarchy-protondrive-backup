@@ -16,6 +16,7 @@ Item {
 
   required property string cliPath
   required property bool cliChecked
+  required property string cliError
   required property string pluginDir
   required property string homeDir
   required property string cloudGlyph
@@ -193,9 +194,17 @@ Item {
       spacing: Style.space(10)
 
       Text {
+        visible: !root.cliChecked
+        width: parent.width
+        text: "Setting up Proton Drive CLI…"
+        color: Qt.darker(root.foreground, 1.5)
+        font.pixelSize: Style.font.bodySmall
+      }
+
+      Text {
         visible: root.cliChecked && root.cliPath === ""
         width: parent.width
-        text: "Proton Drive CLI not found — make sure proton-drive is installed and on PATH."
+        text: "Could not set up the Proton Drive CLI: " + root.cliError
         color: Color.urgent
         font.pixelSize: Style.font.bodySmall
         wrapMode: Text.Wrap
