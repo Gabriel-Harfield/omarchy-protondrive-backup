@@ -5,10 +5,18 @@ CLI as the transfer backend.
 
 Built around one priority, ahead of every other feature: **never lose or
 corrupt a file.** Everything below — the explicit, one-shot actions
-instead of a background sync daemon, the pinned CLI version, even which
-picker button does what — follows from that, including the features this
-plugin deliberately doesn't have yet. See "Why reliability comes before
-real-time sync" below for the reasoning in full.
+instead of a background sync daemon, the pinned CLI version this plugin
+downloads and manages itself rather than relying on the AUR or anything
+else already on your system, even which picker button does what —
+follows from that, including the features this plugin deliberately
+doesn't have yet. See "Why reliability comes before real-time sync" and
+"A pinned Proton Drive CLI" below for the reasoning in full.
+
+## Install
+
+```sh
+omarchy plugin add https://github.com/Gabriel-Harfield/omarchy-protondrive-backup.git --enable
+```
 
 - **Backup** — Déjà Dup-style manual backup of one file or folder at a
   time. No sync, no file comparison — every backup is a brand-new, dated
@@ -23,11 +31,14 @@ Backup, Browse, and Settings are fully separate components (`BackupTab.qml`
 / `BrowseTab.qml` / `SettingsView.qml`) with their own state and their own
 scripts — see "Files" below.
 
-This is a separate, much simpler plugin than
-`io.github.gabrielharfield.protondrive-sync`, which is now a private
-testbed for exploring real sync approaches — not something this plugin
-depends on or shares code with. If that ever produces a satisfying
-result, it would be ported in here as a third tab, not merged wholesale.
+## Configure
+
+```sh
+omarchy bar move io.github.gabrielharfield.protondrive-backup --section <left|center|right>
+```
+
+Defaults to the right section. No other settings — see "A pinned Proton
+Drive CLI" below for why there's deliberately no CLI-path option to configure.
 
 ## Why reliability comes before real-time sync
 
@@ -53,30 +64,32 @@ picked the second answer, on purpose, even where that costs convenience.
   that same wall from a different angle — and a sync engine that starts
   missing or delaying updates under its own load is exactly the kind of
   quietly-degraded reliability this project won't ship.
-- **A real two-way sync engine is possible on top of `filesystem list`'s
-  per-revision metadata** (`claimedDigests.sha1`, `claimedModificationTime`,
-  `claimedSize`) — at least one other Proton Drive plugin has built
-  exactly that, competently, with a test suite that holds up under
-  review. That's a legitimate engineering achievement, and it's also a
-  bet this project won't make: those fields aren't part of the CLI's
-  documented contract. If a future CLI version changes what they mean,
-  or ships its own content-aware download logic that quietly disagrees
-  with a hand-rolled diff built on top of it, the failure mode is a
-  *silently wrong* sync state, not a loud crash — the worst possible
-  failure mode for something holding real files, because nothing tells
-  you it happened. Depending on undocumented behavior to sync someone's
-  only copy of a document is a trade this plugin isn't willing to make,
-  no matter how well the code around that trade is written. See the
-  CLI-pinning section below for the same "silent drift is worse than a
-  loud break" reasoning applied to version control in general — it's the
-  same principle both times, not two unrelated decisions.
+- **A two-way sync engine could technically be built on top of
+  `filesystem list`'s per-revision metadata** (`claimedDigests.sha1`,
+  `claimedModificationTime`, `claimedSize`) instead of the CLI's own
+  `upload`/`download` primitives. That's not a secret, and it's not
+  actually the hard part. The reason this plugin doesn't do it is that
+  those fields aren't part of the CLI's documented contract. If a future
+  CLI version changes what they mean, or ships its own content-aware
+  download logic that quietly disagrees with a hand-rolled diff built on
+  top of it, the failure mode is a *silently wrong* sync state, not a
+  loud crash — the worst possible failure mode for something holding
+  real files, because nothing tells you it happened. Depending on
+  undocumented behavior to sync someone's only copy of a document is a
+  trade this plugin isn't willing to make. See the CLI-pinning section
+  below for the same "silent drift is worse than a loud break" reasoning
+  applied to version control in general — it's the same principle both
+  times, not two unrelated decisions.
 
-If Proton ships a real Linux sync client, or the CLI gains an actual
-change-feed / push primitive, this calculus changes — the objection is to
-depending on an undocumented workaround, not to sync as a goal. Until
-then: back up explicitly, on your own schedule, and know exactly what got
-uploaded and when. Slower and certain beats fast and occasionally wrong,
-for this kind of tool — that's the whole design philosophy in one line.
+For real multi-device sync, this project would rather wait for Proton
+Drive's own CLI to ship a genuine, documented, Dropbox-style sync
+primitive than build one on top of behavior Proton never promised to
+keep. That's a security and reliability choice, not a technical
+limitation — the objection is to depending on an undocumented
+workaround, not to sync as a goal. Until then: back up explicitly, on
+your own schedule, and know exactly what got uploaded and when. Slower
+and certain beats fast and occasionally wrong, for this kind of tool —
+that's the whole design philosophy in one line.
 
 ## Backup tab
 
@@ -225,3 +238,14 @@ button:
   under `/my-files`. Proton Drive's other top-level sections
   (`/shared-with-me`, …) address nodes by UID rather than by name and
   aren't reachable from this tab.
+
+## Remove
+
+```sh
+omarchy plugin remove io.github.gabrielharfield.protondrive-backup
+```
+
+This only removes the plugin itself. It doesn't touch anything already
+uploaded to Proton Drive, and it doesn't remove the plugin's own pinned
+CLI copy at `~/.local/share/omarchy-protondrive-backup/bin/proton-drive`
+— delete that folder by hand if you want it gone too.
