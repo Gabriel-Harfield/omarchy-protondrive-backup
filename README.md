@@ -147,18 +147,25 @@ tool moving real files.
 So instead, `ensure-cli.sh` runs once per panel session and:
 
 1. Checks whether this plugin's own pinned copy is already sitting at
-   `~/.local/share/omarchy-protondrive-backup/bin/proton-drive` and
-   reports the exact version this plugin was built and tested against
-   (`proton-drive --version` — fast, no re-hash needed on the common
-   path).
-2. If it's missing, or reports a different version — including a version
+   `~/.local/share/omarchy-protondrive-backup/bin/proton-drive` **and its
+   SHA-512 matches the pinned checksum** — not just whether it prints the
+   expected `--version` string, which is trivial to forge and proves
+   nothing about the file's actual contents. Hashing the ~118MB binary
+   costs well under a second, so this runs on every launch, not just after
+   a fresh download.
+2. If it's missing, or the checksum doesn't match — including a build
    that's *newer* than the one this plugin expects, since that's still a
    behavior nobody has verified yet — downloads the **specific pinned
    build** from Proton's own official CDN (the version, URL, and SHA-512
    checksum are hardcoded in the script, not fetched from Proton's
-   "current Stable" manifest), verifies the checksum, and installs it.
-   That also means a corrupted or externally-tampered copy self-heals
-   back to the known-good build on the next launch.
+   "current Stable" manifest, and the download is capped at 200MB so an
+   oversized or misbehaving response can't fill the disk before the
+   checksum check gets a chance to reject it), verifies the checksum, and
+   installs it. That also means a corrupted, incomplete, or
+   externally-replaced copy self-heals back to the known-good build on
+   the next launch — verified live by swapping in a fake binary that
+   printed the right `--version` string, confirming it gets detected and
+   replaced rather than trusted.
 
 This happens automatically — no install button — but it isn't hidden:
 the panel shows "Setting up Proton Drive CLI…" while it's in progress, so

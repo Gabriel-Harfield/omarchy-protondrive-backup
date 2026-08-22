@@ -13,12 +13,16 @@
 #   {"ok":true,"path":"...","version":"0.8.0","fresh":true|false}
 #   {"ok":false,"message":"..."}
 # fresh:true means a real download just happened; fresh:false means the
-# pinned binary was already in place and passed its version check.
+# pinned binary was already in place and its SHA-512 matched.
 set -uo pipefail
 
 PINNED_VERSION="0.8.0"
 TARGET_DIR="$HOME/.local/share/omarchy-protondrive-backup/bin"
 TARGET="$TARGET_DIR/proton-drive"
+# Comfortably above the real ~118MB binary; a hard ceiling so a compromised
+# or misbehaving response can't exhaust disk space before the checksum
+# check below ever gets to run.
+MAX_DOWNLOAD_BYTES=209715200
 
 json_escape() {
   local s="$1"
@@ -51,13 +55,17 @@ case "$(uname -m)" in
   *) fail "Unsupported architecture: $(uname -m)" ;;
 esac
 
-# Already in place and passing a fast sanity check? Nothing to do. A full
-# SHA-512 re-hash of a ~118MB binary on every panel open would be wasted
-# work; the version string is enough to catch "something else is sitting at
-# this path now" without re-downloading anything on the common path.
+# Already in place with the right bytes? Nothing to do. A self-reported
+# `--version` string is not proof of anything — it's exactly as easy to
+# forge as the string itself, so trusting one instead of the checksum would
+# mean any user-writable replacement at this path that prints the expected
+# version gets executed with Proton Drive access. Only a byte-for-byte
+# SHA-512 match short-circuits the download below; hashing the ~118MB
+# binary costs well under a second, so there's no real tradeoff for
+# skipping it.
 if [ -x "$TARGET" ]; then
-  CURRENT_VERSION=$("$TARGET" --version 2>/dev/null | head -1)
-  if printf '%s' "$CURRENT_VERSION" | grep -q "cli-drive@$PINNED_VERSION"; then
+  CURRENT_SHA=$(sha512sum "$TARGET" 2>/dev/null | awk '{print $1}')
+  if [ "$CURRENT_SHA" = "$SHA512" ]; then
     printf '{"ok":true,"path":"%s","version":"%s","fresh":false}\n' "$(json_escape "$TARGET")" "$PINNED_VERSION"
     exit 0
   fi
@@ -67,7 +75,7 @@ mkdir -p "$TARGET_DIR"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-curl -fsSL --max-time 180 -o "$tmp" "$URL" || fail "Download failed: $URL"
+curl -fsSL --max-time 180 --max-filesize "$MAX_DOWNLOAD_BYTES" -o "$tmp" "$URL" || fail "Download failed: $URL"
 
 got_sha=$(sha512sum "$tmp" | awk '{print $1}')
 if [ "$got_sha" != "$SHA512" ]; then
