@@ -4,10 +4,14 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// Orchestration only: finds the CLI once, hosts the tab switcher, and hands
-// BackupTab.qml / BrowseTab.qml everything they need as plain properties.
-// Neither tab reaches into the other or into this file's internals beyond
-// that — see the "Tab isolation" note in each tab's own header comment.
+// Orchestration only: finds the CLI once, hosts the tab switcher and the
+// gear-icon Settings view, and hands BackupTab.qml / BrowseTab.qml /
+// SettingsView.qml everything they need as plain properties. None of the
+// three reaches into another — see the isolation note in each one's own
+// header comment. cliPath flows down to all three, but only SettingsView
+// can change it (edit / auto-detect / install); Panel.qml picks that up via
+// its own `onCliPathChanged:` handler on the SettingsView instance and
+// mirrors it into `root.cliPath`, which is what BackupTab/BrowseTab bind to.
 Panel {
   id: root
   moduleName: "io.github.gabrielharfield.protondrive-backup"
@@ -25,6 +29,8 @@ Panel {
 
   // "backup" | "browse"
   property string activeTab: "backup"
+  // "tabs" | "settings"
+  property string panelView: "tabs"
 
   // open()/close() are the only overrides needed: base Panel.qml's toggle(),
   // closeForPopoutSwitch(), and the `opened`/`popoutSwitchClosing`
@@ -68,7 +74,8 @@ Panel {
       anchors.fill: parent
       blocked: false
       onCloseRequested: {
-        if (root.activeTab === "backup" && backupTab.viewMode === "confirm") backupTab.cancelPending()
+        if (root.panelView === "settings") root.panelView = "tabs"
+        else if (root.activeTab === "backup" && backupTab.viewMode === "confirm") backupTab.cancelPending()
         else root.close()
       }
       onTabRequested: function(direction) { root.switchPanel(direction) }
@@ -86,7 +93,7 @@ Panel {
           Row {
             id: headerRow
             width: parent.width
-            height: titleText.implicitHeight
+            height: Math.max(titleText.implicitHeight, gearBtn.implicitHeight)
 
             Text {
               id: titleText
@@ -97,10 +104,25 @@ Panel {
               font.family: root.bar ? root.bar.fontFamily : Style.font.family
               font.pixelSize: Style.font.subtitle
             }
+
+            Item {
+              width: headerRow.width - titleText.width - gearBtn.width
+              height: 1
+            }
+
+            PanelActionButton {
+              id: gearBtn
+              anchors.verticalCenter: parent.verticalCenter
+              iconText: root.panelView === "settings" ? "\u2715" : "\uDB81\uDC93"
+              tooltipText: root.panelView === "settings" ? "Back" : "Settings"
+              foreground: root.barForeground
+              onClicked: root.panelView = (root.panelView === "settings") ? "tabs" : "settings"
+            }
           }
 
           Row {
             id: tabRow
+            visible: root.panelView === "tabs"
             width: parent.width
             spacing: Style.spacing.sm
 
@@ -138,7 +160,7 @@ Panel {
           BackupTab {
             id: backupTab
             anchors.fill: parent
-            visible: root.activeTab === "backup"
+            visible: root.panelView === "tabs" && root.activeTab === "backup"
             cliPath: root.cliPath
             cliChecked: root.cliChecked
             pluginDir: root.pluginDir
@@ -151,7 +173,7 @@ Panel {
           BrowseTab {
             id: browseTab
             anchors.fill: parent
-            visible: root.activeTab === "browse"
+            visible: root.panelView === "tabs" && root.activeTab === "browse"
             cliPath: root.cliPath
             cliChecked: root.cliChecked
             pluginDir: root.pluginDir
@@ -159,6 +181,17 @@ Panel {
             cloudGlyph: root.cloudGlyph
             foreground: root.barForeground
             fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+          }
+
+          SettingsView {
+            id: settingsView
+            anchors.fill: parent
+            visible: root.panelView === "settings"
+            pluginDir: root.pluginDir
+            initialCliPath: root.cliPath
+            foreground: root.barForeground
+            fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+            onCliPathChanged: root.cliPath = settingsView.cliPath
           }
         }
       }

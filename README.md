@@ -1,7 +1,7 @@
 # Proton Drive Backup
 
-A two-tab Omarchy bar panel for Proton Drive, using the official Proton
-Drive CLI as the transfer backend.
+An Omarchy bar panel for Proton Drive, using the official Proton Drive
+CLI as the transfer backend.
 
 - **Backup** — Déjà Dup-style manual backup of one file or folder at a
   time. No sync, no file comparison — every backup is a brand-new, dated
@@ -9,14 +9,18 @@ Drive CLI as the transfer backend.
 - **Browse** — breadcrumb navigation of your whole Proton Drive, starting
   at `/my-files`, to download anything or upload into whatever folder
   you're currently viewing.
+- **Settings** (gear icon, top right) — install/detect the `proton-drive`
+  CLI and log in.
 
-The two tabs are fully separate components (`BackupTab.qml` /
-`BrowseTab.qml`) with their own state and their own scripts — see
-"Tab isolation" below.
+Backup, Browse, and Settings are fully separate components (`BackupTab.qml`
+/ `BrowseTab.qml` / `SettingsView.qml`) with their own state and their own
+scripts — see "Files" below.
 
 This is a separate, much simpler plugin than
-`io.github.gabrielharfield.protondrive-sync` (folder sync + Syncthing),
-which is currently parked.
+`io.github.gabrielharfield.protondrive-sync`, which is now a private
+testbed for exploring real sync approaches — not something this plugin
+depends on or shares code with. If that ever produces a satisfying
+result, it would be ported in here as a third tab, not merged wholesale.
 
 ## Backup tab
 
@@ -56,26 +60,50 @@ or uploads, so navigating around Proton Drive can never destroy anything
 by accident. Deleting stays a Backup-tab-only action, on backups the
 plugin itself created.
 
+## Settings
+
+Click the gear icon (top right) to open it, click it again (now a ✕) or
+press Escape to go back to whichever tab you were on.
+
+- **Install Proton-CLI** downloads the official Linux binary straight
+  from Proton's own release manifest (not pinned to a hardcoded version)
+  to `~/.local/bin/proton-drive`, verifying its SHA-512 checksum before
+  installing anything.
+- The CLI path field can be edited by hand, or filled in with
+  **Auto-detect** (same lookup as `find-cli.sh` uses on startup:
+  `proton-drive` on `PATH`, then `~/.local/bin`, `~/Downloads`,
+  `~/Applications`).
+- **Log in** runs `proton-drive auth login`, which opens your browser to
+  sign in (can be completed on a different device) — the button stays
+  disabled ("Opening browser…") until that finishes.
+
 ## Requirements
 
-- Proton Drive CLI (`proton-drive`) installed and logged in
-  (`proton-drive auth login`) — same CLI as the sync plugin, auto-detected
-  via `find-cli.sh`.
+- Proton Drive CLI (`proton-drive`), installed and logged in via the
+  Settings view above (or manually: `proton-drive auth login`).
 - `jq` (JSON reshaping in `list-backups.sh` / `list-path.sh`).
 - `omarchy-file-select` (ships with Omarchy) for the file/folder picker.
+- `curl` (Settings' CLI install, fetching Proton's release manifest and
+  binary).
 
 ## Files
 
 - `BarWidget.qml` — bar icon, toggles the panel.
 - `Panel.qml` — orchestration only: finds the CLI once, hosts the tab
-  switcher, passes `cliPath` and a few constants down to both tabs.
-- `BackupTab.qml` / `BrowseTab.qml` — the two tabs. Self-contained: own
-  state, own `Process` calls into the scripts below. Neither reaches into
-  the other.
-- `Format.js` — the only thing shared between the tabs: pure formatting
-  helpers (byte sizes, dates, the backup timestamp suffix). No CLI paths,
-  no state, so importing it doesn't couple the tabs' actual behavior.
-- `find-cli.sh` — locates the `proton-drive` binary.
+  switcher and the gear-icon Settings toggle, passes `cliPath` and a few
+  constants down to all three views.
+- `BackupTab.qml` / `BrowseTab.qml` / `SettingsView.qml` — the three
+  views. Self-contained: own state, own `Process` calls into the scripts
+  below. None reaches into another. Settings is the one exception that
+  writes back to Panel.qml's `cliPath` (via its own auto-generated
+  `cliPathChanged` signal) — see the note at the top of `Panel.qml`.
+- `Format.js` — the only thing shared between Backup/Browse: pure
+  formatting helpers (byte sizes, dates, the backup timestamp suffix). No
+  CLI paths, no state, so importing it doesn't couple their actual behavior.
+- `find-cli.sh` — locates the `proton-drive` binary. Panel.qml (startup)
+  and SettingsView.qml (Auto-detect button).
+- `install-cli.sh` — downloads and verifies the official CLI binary.
+  Settings view.
 - `stat-kind.sh` — "file" or "folder" for a local path (Backup tab only;
   Browse tab's upload doesn't care which).
 - `list-backups.sh` — ensures `/my-files/Backups` exists, lists its

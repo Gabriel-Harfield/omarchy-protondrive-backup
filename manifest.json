@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "io.github.gabrielharfield.protondrive-backup",
   "name": "Proton Drive Backup",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": "gabrielharfield",
   "license": "MIT",
-  "description": "Two-tab Proton Drive panel using the official Proton Drive CLI as the transfer backend. The Backup tab is Deja-Dup-style: pick a file or folder, it's uploaded to /my-files/Backups with the current date and time baked into its name (never overwritten), and any previous backups of that same item are offered for deletion first. The Browse tab is a breadcrumb-navigable read/write view of your whole Proton Drive, starting at /my-files, to download any file or folder or upload one into whatever folder you're currently viewing. No sync, no file comparison anywhere — every action is an explicit, one-shot upload or download. Left-click the bar icon to open the panel — the panel isn't IPC-toggleable (manageIpc is off, to avoid duplicate-instance IPC target collisions on multi-monitor setups).",
+  "description": "Proton Drive panel using the official Proton Drive CLI as the transfer backend. The Backup tab is Deja-Dup-style: pick a file or folder, it's uploaded to /my-files/Backups with the current date and time baked into its name (never overwritten), and any previous backups of that same item are offered for deletion first. The Browse tab is a breadcrumb-navigable read/write view of your whole Proton Drive, starting at /my-files, to download any file or folder or upload one into whatever folder you're currently viewing. A gear-icon Settings view installs/detects the CLI and logs in. No sync, no file comparison anywhere — every action is an explicit, one-shot upload or download. Left-click the bar icon to open the panel — the panel isn't IPC-toggleable (manageIpc is off, to avoid duplicate-instance IPC target collisions on multi-monitor setups).",
   "kinds": [
     "bar-widget"
   ],
