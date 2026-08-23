@@ -21,8 +21,13 @@ TARGET_DIR="$HOME/.local/share/omarchy-protondrive-backup/bin"
 TARGET="$TARGET_DIR/proton-drive"
 # Comfortably above the real ~118MB binary; a hard ceiling so a compromised
 # or misbehaving response can't exhaust disk space before the checksum
-# check below ever gets to run.
+# check below ever gets to run. Enforced via dd's block count below, not
+# curl's own --max-filesize: that option only applies when the server
+# advertises a Content-Length up front, and does nothing for a chunked or
+# otherwise length-less response — dd physically stops writing at this many
+# bytes regardless of what the server claims or how long it keeps streaming.
 MAX_DOWNLOAD_BYTES=209715200
+MAX_DOWNLOAD_MB=$((MAX_DOWNLOAD_BYTES / 1024 / 1024))
 
 json_escape() {
   local s="$1"
@@ -75,7 +80,12 @@ mkdir -p "$TARGET_DIR"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-curl -fsSL --max-time 180 --max-filesize "$MAX_DOWNLOAD_BYTES" -o "$tmp" "$URL" || fail "Download failed: $URL"
+curl -fsSL --max-time 180 --max-filesize "$MAX_DOWNLOAD_BYTES" "$URL" \
+  | dd of="$tmp" bs=1M count="$MAX_DOWNLOAD_MB" iflag=fullblock 2>/dev/null
+curl_status="${PIPESTATUS[0]}"
+if [ "$curl_status" -ne 0 ]; then
+  fail "Download failed: $URL"
+fi
 
 got_sha=$(sha512sum "$tmp" | awk '{print $1}')
 if [ "$got_sha" != "$SHA512" ]; then
