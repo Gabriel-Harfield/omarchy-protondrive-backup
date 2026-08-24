@@ -214,6 +214,8 @@ button:
   CLI paths, no state, so importing it doesn't couple their actual behavior.
 - `ensure-cli.sh` — installs/verifies the pinned CLI build at this
   plugin's own path. See "A pinned Proton Drive CLI" above.
+- `auth-login.sh` — runs `auth login` with a bounded output capture and a
+  wall-clock deadline. Settings.
 - `stat-kind.sh` — "file" or "folder" for a local path (Backup tab only;
   Browse tab's upload doesn't care which).
 - `list-backups.sh` — ensures `/my-files/Backups` exists, lists its
@@ -252,6 +254,15 @@ controls:
   plugin doesn't own directly (the "related backups" list uses qs.Ui's
   shared `Toggle` component, whose internal `Text` can't be configured
   from here) gets its input HTML-escaped instead (`Format.plainText()`).
+  The same applies to the CLI's own login-failure text in Settings, which
+  is provider/CLI-controlled the same way a listing is.
+- `auth login` (Settings' Log in button) runs through `auth-login.sh`
+  rather than a bare `Process`/`StdioCollector` pair, for the same reason
+  as the point above: `timeout` bounds how long the CLI process can run
+  (a generous 300s — real logins wait on a browser, this is a backstop
+  against a hang, not a UX limit) and `head -c` bounds how much of its
+  stdout/stderr ever gets captured, so a stalled or malfunctioning CLI
+  can't hold the shared shell open or grow memory without limit.
 
 ## Notes
 
@@ -270,11 +281,29 @@ controls:
 
 ## Remove
 
+Removing the plugin does not sign you out of Proton Drive: the official
+CLI keeps its own authenticated session and local state entirely
+independent of this plugin, and `omarchy plugin remove` has no way to
+reach into that. To leave nothing behind:
+
 ```sh
+~/.local/share/omarchy-protondrive-backup/bin/proton-drive auth logout
 omarchy plugin remove io.github.gabrielharfield.protondrive-backup
+rm -rf ~/.local/share/omarchy-protondrive-backup
 ```
 
-This only removes the plugin itself. It doesn't touch anything already
-uploaded to Proton Drive, and it doesn't remove the plugin's own pinned
-CLI copy at `~/.local/share/omarchy-protondrive-backup/bin/proton-drive`
-— delete that folder by hand if you want it gone too.
+- `auth logout` signs out and clears the CLI's own local credentials and
+  cache: it removes the saved session from your OS secret store (the
+  default credentials backend) and deletes the CLI's cached file-tree/
+  crypto data under `~/.cache/proton-drive-cli/`. Run it before removing
+  the plugin, while the pinned CLI binary is still in place to run it
+  with — it won't touch anything already uploaded to Proton Drive itself.
+- `omarchy plugin remove` removes the plugin.
+- `rm -rf ~/.local/share/omarchy-protondrive-backup` removes this
+  plugin's own pinned CLI binary — nothing else on your system depends on
+  that specific copy (see "A pinned Proton Drive CLI" above).
+
+The CLI also keeps its own application logs — separate from the session/
+cache state `auth logout` clears — under `~/.local/state/proton-drive-cli/`
+by default. Delete that folder by hand too if you want no local trace of
+the CLI left at all; it holds operational logs, not credentials.

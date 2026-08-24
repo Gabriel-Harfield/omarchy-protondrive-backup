@@ -16,6 +16,7 @@ Item {
 
   required property string cliPath
   required property string cliVersion
+  required property string pluginDir
   required property color foreground
   required property string fontFamily
 
@@ -26,20 +27,28 @@ Item {
     if (root.cliPath === "" || root.loggingIn) return
     root.loggingIn = true
     root.loginError = ""
-    loginProc.command = [root.cliPath, "auth", "login"]
+    loginProc.command = ["bash", root.pluginDir + "/auth-login.sh", root.cliPath]
     loginProc.running = false
     loginProc.running = true
   }
 
+  // Goes through auth-login.sh rather than calling the CLI directly: that
+  // script bounds both the captured output (a byte ceiling, same pattern as
+  // every other script here) and the process's wall-clock lifetime (a
+  // `timeout`), which a bare Process + StdioCollector pair can't do on its
+  // own — see the script's own header for why. Only stdout is read: the
+  // script always emits well-formed JSON on both success and failure paths.
   Process {
     id: loginProc
     stdout: StdioCollector { id: loginStdout; waitForEnd: true }
-    stderr: StdioCollector { id: loginStderr; waitForEnd: true }
     onExited: function(exitCode) {
       root.loggingIn = false
-      root.loginError = exitCode === 0
+      var raw = (loginStdout.text || "").trim()
+      var parsed = null
+      try { parsed = JSON.parse(raw) } catch (e) { parsed = null }
+      root.loginError = (parsed && parsed.ok === true)
         ? ""
-        : ((loginStderr.text || "").trim() || (loginStdout.text || "").trim() || "Login failed")
+        : ((parsed && parsed.message) || raw || "Login failed")
     }
   }
 
@@ -86,6 +95,7 @@ Item {
         visible: root.loginError !== ""
         width: parent.width
         text: "Login failed: " + root.loginError
+        textFormat: Text.PlainText
         color: Color.urgent
         font.pixelSize: Style.font.bodySmall
         wrapMode: Text.Wrap

@@ -209,6 +209,7 @@ Panel {
             visible: root.panelView === "settings"
             cliPath: root.cliPath
             cliVersion: root.cliVersion
+            pluginDir: root.pluginDir
             foreground: root.barForeground
             fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
           }
